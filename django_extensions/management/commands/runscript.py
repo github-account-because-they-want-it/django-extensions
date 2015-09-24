@@ -9,19 +9,9 @@ from django_extensions.management.utils import signalcommand
 
 
 def vararg_callback(option, opt_str, opt_value, parser):
-    parser.rargs.insert(0, opt_value)
-    value = []
-    for arg in parser.rargs:
-        # stop on --foo like options
-        if arg[:2] == "--" and len(arg) > 2:
-            break
-        # stop on -a like options
-        if arg[:1] == "-":
-            break
-        value.append(arg)
-
-    del parser.rargs[:len(value)]
-    setattr(parser.values, option.dest, value)
+    assert opt_value is None
+    setattr(parser.values, "script_args", parser.rargs)
+    parser.rargs = []
 
 
 class Command(EmailNotificationCommand):
@@ -34,12 +24,13 @@ class Command(EmailNotificationCommand):
                     help='Run silently, do not show errors and tracebacks'),
         make_option('--no-traceback', action='store_true', dest='no_traceback', default=False,
                     help='Do not show tracebacks'),
-        make_option('--script-args', action='callback', callback=vararg_callback, type='string',
-                    help='Space-separated argument list to be passed to the scripts. Note that the '
-                         'same arguments will be passed to all named scripts.'),
+        make_option('--script-args', action='callback', callback=vararg_callback,
+                    help='Arguments to your script, e.g: --script-args -- arg1 --file myfile.txt '
+                    'Tip: you can pass the arguments to your ArgumentParser.parse_args() '
+                         'or OptionParser.parse_args()'),
     )
     help = 'Runs a script in django context.'
-    args = "script [script ...]"
+    args = "script [--script-args ...]"
 
     @signalcommand
     def handle(self, *scripts, **options):
